@@ -24,6 +24,49 @@ or using ```net install``` command:
 net install sdid, from("https://raw.githubusercontent.com/damiancclarke/eventdd/master") replace
 ```
 
+## Syntax
+
+
+
+## Examples
+
+### Stevenson & Wolfers, No Fault Divorce and Suicides
+```s
+webuse set www.damianclarke.net/stata/
+webuse bacon_example.dta, clear
+
+gen timeToTreat = year - _nfd
+
+eventdd asmrs pcinc asmrh cases i.year, timevar(timeToTreat) method(fe, cluster(stfips)) graph_op(ytitle("Suicides per 1m Women") xlabel(-20(5)25))
+```
+
+### Bhalotra et al., Reserved Seat Quota Adoption and Maternal Mortality 
+```s
+webuse set www.damianclarke.net/stata/
+webuse quota_example.dta, clear
+
+// Generate indicator for GDP in bottom quartile
+sum lngdp, d
+gen GDPp25 = lngdp<r(p25)
+
+// Generate country-level register of year of quota adoption and time to adoption
+bys country: egen minQ  = min(year) if quota==1
+bys country: egen qyear = mean(minQ)
+gen timeToTreat = year-qyear
+
+// Event study examining impact of reserved seats on maternal mortality
+eventdd lnmmrt i.year, timevar(timeToTreat) method(hdfe, absorb(country) cluster(country)) lags(10) leads(10) accum graph
+```
+
+<img src="https://github.com/damiancclarke/eventdd/blob/main/quotas.pdf" width="600" height="400"> 
+
+```s
+eventdd lnmmrt i.year, timevar(timeToTreat) method(hdfe, absorb(country) cluster(country)) lags(10) leads(10) accum over(GDPp25) jitter(0.2)  graph_op(legend(pos(6) order(2 "Point Estimate (GDP {&ge} 25 p)" 5 "Point Estimate (GDP < 25 p)" 1 "95% CI") rows(1))) coef_op(g1(ms(Sh)) g2(ms(Oh))) ci(rarea, g1(color(gs12%30)) g2(color(gs12%50))) 
+```
+
+<img src="https://github.com/damiancclarke/eventdd/blob/main/quotasByGDP.pdf" width="600" height="400"> 
+
+
 
 ### References
 Damian Clarke and Kathya Tapia Schythe, "Implementing the Panel Event Study", Stata Journal 21(4):853–884 (2021).
