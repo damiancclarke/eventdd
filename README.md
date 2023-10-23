@@ -58,13 +58,13 @@ gen timeToTreat = year-qyear
 eventdd lnmmrt i.year, timevar(timeToTreat) method(hdfe, absorb(country) cluster(country)) lags(10) leads(10) accum graph
 ```
 
-<img src="https://github.com/damiancclarke/eventdd/blob/main/quotas.pdf" width="600" height="400"> 
+<img src="https://github.com/damiancclarke/eventdd/blob/main/quotas.png" width="600" height="400"> 
 
 ```s
 eventdd lnmmrt i.year, timevar(timeToTreat) method(hdfe, absorb(country) cluster(country)) lags(10) leads(10) accum over(GDPp25) jitter(0.2)  graph_op(legend(pos(6) order(2 "Point Estimate (GDP {&ge} 25 p)" 5 "Point Estimate (GDP < 25 p)" 1 "95% CI") rows(1))) coef_op(g1(ms(Sh)) g2(ms(Oh))) ci(rarea, g1(color(gs12%30)) g2(color(gs12%50))) 
 ```
 
-<img src="https://github.com/damiancclarke/eventdd/blob/main/quotasByGDP.pdf" width="600" height="400"> 
+<img src="https://github.com/damiancclarke/eventdd/blob/main/quotasByGDP.png" width="600" height="400"> 
 
 
 
