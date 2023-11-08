@@ -200,7 +200,6 @@ If you use **eventdd** and would like to cite it, please cite either the paper a
   pages = {853-884},
   year = {2021},
   doi = {10.1177/1536867X211063144},
-entdd’s use and flexibility, as well as its interaction with various native Stata commands, and other relevant community-contributed commands such as reghdfe and boottest. }
 }
 ```
 > Clarke, D., & Tapia-Schythe, K. (2021). Implementing the panel event study. The Stata Journal, 21(4), 853-884. https://doi.org/10.1177/1536867X211063144
