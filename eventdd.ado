@@ -1,9 +1,9 @@
 *! eventdd: Estimate panel event study models and generate plots
-*! Version 3.0.0 December 10, 2020 @ 11:59:08
-*! Author: Damian Clarke & Kathya Tapia Schythe
+*! Version 4.0.0 October 08, 2023 @ 11:15:11 
+*! Author: Damian Clarke & Kathya Tapia-Schythe 
 
-cap program drop eventdd
-program eventdd, eclass
+cap program drop eventdd3
+program eventdd3, eclass
 vers 13.0
 
 *-------------------------------------------------------------------------------
@@ -16,21 +16,25 @@ timevar(varname)        /*Standardized time variable*/
   [
   baseline(integer -1)  /*Reference period*/
   ci(string asis)       /*Type of CI, rarea, rcap or rline, and graphing options -> ci(type, ci_opts)*/
-  noline	        /*No line in t=-1*/
+  noline	        	/*No line in t=-1*/
   accum                 /*Accumulate time in final leads and lags*/
   noend                 /*Don't plot end points with accum*/
   keepbal(varname)      /*Use only units balanced in all leads and lags*/
   lags(integer 0)       /*Number of lags to display with accum*/
   leads(integer 0)      /*Number of leads to display with accum*/
   method(string)        /*Type of estimation: OLS (default), FE or HDFE -> method(type, [absorb() *])*/
-  wboot		        /*Wild bootstrap standard errors*/
+  wboot		        	/*Wild bootstrap standard errors*/
   wboot_op(string)      /*Options for boottest*/
   balanced              /*Use a balanced panel in all leads/lags selected*/
-  inrange	        /*Show periods between leads and lags*/
+  inrange	        	/*Show periods between leads and lags*/
   graph_op(string asis) /*General graphing options: titles, subtitle, scheme, note, label */
   coef_op(string asis)  /*Coef (scatter) graphing options*/
   endpoints_op(string asis)  /*Endpoints (scatter) graphing options*/
   keepdummies           /*Generate dummies of leads and lags*/ 
+  
+  over(varlist max=1)   /*Create plots by categories*/
+  jitter(real 0)        /*Jitter the groups' CIs*/
+  
   *UNDOCUMENTED OPTIONS TO MAINTAIN BACKWARDS COMPATABILITY
   ci_op(string asis)    /*CI (rcap/rarea/line) graphing options*/
   ols fe hdfe           /*Type of FE estimation: FE, HDFE (default: OLS)*/
@@ -39,7 +43,13 @@ timevar(varname)        /*Standardized time variable*/
   ];
 #delimit cr
 
+preserve 
+
 local wt [`weight' `exp']
+
+if ("`over'"=="") {
+local jitter
+}
 
 *UNDOCUMENTED OPTIONS TO MAINTAIN BACKWARDS COMPATABILITY
 local ci_op_old `ci_op'
@@ -60,7 +70,6 @@ local changed=`c(changed)'
 if ("`e(keepdummies)'"=="keepdummies")==1{
     qui use `c(filename)', clear
 }
-preserve 
 
 if strmatch("`varlist'", "*lead*")==0 { 
     capture drop lead*
@@ -85,6 +94,22 @@ capture drop lead*
 
 rename `timevar' _Ptime
 local tvar _Ptime
+
+* "over" variable
+if ("`over'"!="") {
+ cap confirm string variable `over'
+ if !_rc {
+  local over_var `over'
+  qui levelsof `over', local(str_groups)
+  encode `over', gen(ov_num)
+  drop `over'
+  rename ov_num `over'
+ }
+ else {
+  local over_var `over'
+  qui levelsof `over', local(str_groups)
+ }
+}
 
 *-------------------------------------------------------------------------------
 *--- (2) General syntax consistency check
@@ -184,6 +209,18 @@ if ("`endpoints_op'" != "" ) & ("`accum'" == "" )==1 {
     exit 198
 }
 
+if ("`over'"=="") + ("`jitter'"!="") > 1 { 
+    di as err "option {bf:jitter()} requires {bf:over()}"
+    exit 198 
+}
+
+if ("`over'"!="") {
+if `jitter' < 0 | `jitter' >= 1 { 
+	di as err "{bf:jitter} is not between {bf:[0,1)}"
+	exit 198 
+    }
+}
+
 local citest=0
 foreach gopt in "*rarea*" "*rcap*" "*rline*" {
     if strmatch(`"`endpoints_op'"',"`gopt'")!=0 local ++citest
@@ -222,6 +259,7 @@ if ("`keepdummies'"=="keepdummies")+("`e(keepdummies)'"=="")>1{
         exit 4
     }
 }
+
 *-------------------------------------------------------------------------------
 *--- (3) Define leads and lags
 *-------------------------------------------------------------------------------     
@@ -231,7 +269,9 @@ local tot_leads `s(tot_leads)'
 
 *-------------------------------------------------------------------------------
 *--- (4) Estimate models
-*-------------------------------------------------------------------------------   
+*-------------------------------------------------------------------------------  
+if ("`over'"=="") {
+
 if ("`method'"=="hdfe")+("`method_old'"=="hdfe")>= 1{
     foreach ado in hdfe ftools {
         cap which `ado'
@@ -250,8 +290,83 @@ else {
     reg `varlist2' `tot_leads' `tot_lags' `if' `in' `wt' , `options' `options_old'
     local estat_wboot=e(cmdline) 
 }
-
+qui estimates store est_
 qui matrix v=e(V)
+qui matrix b=e(b)
+}
+
+else if ("`over'"!="") {
+
+ qui levelsof `over', local(groups)
+ local G = r(r)
+  
+  if ("`if'"==""){
+  local if "if `over'=="
+ }
+ 
+ else if ("`if'"!=""){
+  local if "`if' & `over'=="
+ }
+
+_Na_Me_Gr `str_groups', over(`over')
+local k = 1
+foreach g of local groups{
+ local name_g`g' "`s(name_g`k')'"
+ local ++k
+}
+ 
+local j = 1
+foreach g of local groups{
+
+dis _newline
+dis as result _skip(20) "Group `j': `over'=`name_g`g''"
+
+if ("`method'"=="hdfe")+("`method_old'"=="hdfe")>= 1{
+    foreach ado in hdfe ftools {
+        cap which `ado'
+        if _rc!=0 ssc install `ado'
+    }
+    cap reghdfe, compile
+    local reghdfeopts `absorb' `absorb_old' `options' `options_old'
+    reghdfe `varlist2' `tot_leads' `tot_lags' `if'`g' `in' `wt', `reghdfeopts'
+    local estat_wboot_g`g'=e(cmdline)
+}
+else if ("`method'"=="fe")+("`method_old'"=="fe")>= 1{
+    xtreg `varlist2' `tot_leads' `tot_lags' `if'`g' `in' `wt' , fe `options' `options_old'
+    local estat_wboot_g`g'=e(cmdline) 
+}
+else {
+    reg `varlist2' `tot_leads' `tot_lags' `if'`g' `in' `wt' , `options' `options_old'
+    local estat_wboot_g`g'=e(cmdline) 
+}
+
+qui estimates store est_g`g'
+qui matrix gv_g`g'=e(V)
+qui matrix gb_g`g'=e(b)
+
+local ++j
+}
+
+local i = 1
+local old
+local new
+foreach g of local groups {
+	if (`i'<`G') {
+	 local old `old' `name_g`g''
+	 local new `new' `i',
+    }
+	else if (`i'==`G') {
+	 local old `old' `name_g`g''
+	 local new `new' `i'
+	}
+	local ++i
+ }
+ 
+ mat group_id = [`new']'
+ mat rownames group_id = `old'
+ mat colnames group_id = "eventdd ID"
+ 
+}
 
 *-------------------------------------------------------------------------------
 *--- (5) Generate point estimates and confidence intervals
@@ -285,10 +400,8 @@ else {
 local prebase  =`base'-1
 local postbase =`base'+1
 
-foreach var in times point uCI lCI {
-    tempvar `var'
-    qui gen ``var''=.
-}
+tempvar times
+qui gen `times'=.
                  
 local j = 1
 foreach ld of numlist `min'(1)`max' {
@@ -297,6 +410,15 @@ foreach ld of numlist `min'(1)`max' {
 }
 
 sort `times'
+
+if ("`over'"=="") {
+
+qui estimates restore est_
+
+foreach var in point uCI lCI {
+    tempvar `var'
+    qui gen ``var''=.
+}
 
 if `baseline'<0 {
     if ("`wboot'"=="wboot") == 1{
@@ -523,10 +645,262 @@ else{
     qui matrix vll = v["lead`minlead'".."lag`maxlag'", "lead`minlead'".."lag`maxlag'"]
 }
 
+*qui estimates drop est_
+}
+
+else if ("`over'"!="") {
+
+local j=1
+foreach g of local groups {
+
+foreach var in point_g`g' uCI_g`g' lCI_g`g' {
+    tempvar `var'
+    qui gen ``var''=.
+}
+
+qui estimates restore est_g`g'
+
+if `baseline'<0 {
+    if ("`wboot'"=="wboot") == 1{
+        if `baseline'==`min' {
+            local i = 2
+            foreach t of numlist `t_2'(-1)1{
+                qui replace `point_g`g''=_b[lead`t'] in `i'
+                
+                cap qui boottest lead`t', nograph `wboot_op' level(`lev')
+                cap mat ci_lead`t'= r(CI)
+                cap qui replace `lCI_g`g''  = ci_lead`t'[1,1] in `i'
+                cap qui replace `uCI_g`g''  = ci_lead`t'[1,2] in `i'
+                local ++i
+            }
+        }
+        else if `baseline'==-1 {
+            local i = 1
+            foreach t of numlist `t_1'(-1)2{
+                qui replace `point_g`g''=_b[lead`t'] in `i'
+                
+                cap qui boottest lead`t', nograph `wboot_op' level(`lev')
+                cap mat ci_lead`t'= r(CI)
+                cap qui replace `lCI_g`g''  = ci_lead`t'[1,1] in `i'
+                cap qui replace `uCI_g`g''  = ci_lead`t'[1,2] in `i'
+                local ++i
+            }
+            local ++i
+        }
+        else {
+            local i = 1
+            foreach t of numlist `t_1'(-1)`_blpost' `_blpre'(-1)1{
+                qui replace `point_g`g''=_b[lead`t'] in `i'
+                
+                cap qui boottest lead`t', nograph `wboot_op' level(`lev')
+                cap mat ci_lead`t'= r(CI)
+                cap qui replace `lCI_g`g''  = ci_lead`t'[1,1] in `i'
+                cap qui replace `uCI_g`g''  = ci_lead`t'[1,2] in `i'
+                local ++i
+                if `t'== `_blpost'{
+                    local ++i
+                }
+            }
+        }
+        foreach t of numlist 0(1)`max'{
+            qui replace `point_g`g''=_b[lag`t'] in `i'
+            
+            cap qui boottest lag`t', nograph `wboot_op' level(`lev')
+            cap mat ci_lag`t'= r(CI)
+            cap qui replace `lCI_g`g''  = ci_lag`t'[1,1] in `i'
+            cap qui replace `uCI_g`g''  = ci_lag`t'[1,2] in `i'
+            local ++i
+        }
+    }
+    else {
+        if `baseline'==`min' {
+            local i = 2
+            foreach t of numlist `t_2'(-1)1{
+                qui replace `point_g`g''=_b[lead`t'] in `i'
+                qui replace `lCI_g`g''  =_b[lead`t']+invttail(e(df_r),`critl')*_se[lead`t'] in `i'
+                qui replace `uCI_g`g''  =_b[lead`t']+invttail(e(df_r),`critu')*_se[lead`t'] in `i'
+                local ++i
+            }
+        }
+        else if `baseline'==-1 {
+            local i = 1
+            foreach t of numlist `t_1'(-1)2{
+                qui replace `point_g`g''=_b[lead`t'] in `i'
+                qui replace `lCI_g`g''  =_b[lead`t']+invttail(e(df_r),`critl')*_se[lead`t'] in `i'
+                qui replace `uCI_g`g''  =_b[lead`t']+invttail(e(df_r),`critu')*_se[lead`t'] in `i'
+                local ++i
+            }
+            local ++i
+        }
+        else {
+            local i = 1
+            foreach t of numlist `t_1'(-1)`_blpost' `_blpre'(-1)1{
+                qui replace `point_g`g''=_b[lead`t'] in `i'
+                qui replace `lCI_g`g''  =_b[lead`t']+invttail(e(df_r),`critl')*_se[lead`t'] in `i'
+                qui replace `uCI_g`g''  =_b[lead`t']+invttail(e(df_r),`critu')*_se[lead`t'] in `i'
+                local ++i
+                if `t'== `_blpost'{
+                    local ++i
+                }
+            }
+        }
+        foreach t of numlist 0(1)`max'{
+            qui replace `point_g`g''=_b[lag`t'] in `i'
+            qui replace `lCI_g`g''  =_b[lag`t']+invttail(e(df_r),`critl')*_se[lag`t'] in `i'
+            qui replace `uCI_g`g''  =_b[lag`t']+invttail(e(df_r),`critu')*_se[lag`t'] in `i'
+            local ++i
+        }
+    } 
+}
+
+else if `baseline'>=0 {
+    if ("`wboot'"=="wboot") == 1{
+        local i = 1
+        foreach t of numlist `t_1'(-1)1{
+            qui replace `point_g`g''=_b[lead`t'] in `i'
+            
+            cap qui boottest lead`t', nograph `wboot_op' level(`lev')
+            cap mat ci_lead`t'= r(CI)
+            cap qui replace `lCI_g`g''  = ci_lead`t'[1,1] in `i'
+            cap qui replace `uCI_g`g''  = ci_lead`t'[1,2] in `i'
+            local ++i
+        }
+        if `baseline'==`max' {
+            foreach t of numlist 0(1)`t_3'{
+                qui replace `point_g`g''=_b[lag`t'] in `i'
+                
+                cap qui boottest lag`t', nograph `wboot_op' level(`lev')
+                cap mat ci_lag`t'= r(CI)
+                cap qui replace `lCI_g`g''  = ci_lag`t'[1,1] in `i'
+                cap qui replace `uCI_g`g''  = ci_lag`t'[1,2] in `i'
+                local ++i
+            }
+        }
+        else if `baseline'==0 {
+            local ++i
+            foreach t of numlist 1(1)`max'{
+                qui replace `point_g`g''=_b[lag`t'] in `i'
+                
+                cap qui boottest lag`t', nograph `wboot_op' level(`lev')
+                cap mat ci_lag`t'= r(CI)
+                cap qui replace `lCI_g`g''  = ci_lag`t'[1,1] in `i'
+                cap qui replace `uCI_g`g''  = ci_lag`t'[1,2] in `i'
+                local ++i
+            }
+        }
+        else {
+            foreach t of numlist 0(1)`_blpre' `_blpost'(1)`max'{
+                qui replace `point_g`g''=_b[lag`t'] in `i'
+                
+                cap qui boottest lag`t', nograph `wboot_op' level(`lev')
+                cap mat ci_lag`t'= r(CI)
+                cap qui replace `lCI_g`g''  = ci_lag`t'[1,1] in `i'
+                cap qui replace `uCI_g`g''  = ci_lag`t'[1,2] in `i'
+                local ++i
+                if `t'== `_blpre'{
+                    local ++i
+                }
+            }
+        }
+    }
+    else {
+        local i=1
+        foreach t of numlist `t_1'(-1)1{
+            qui replace `point_g`g''=_b[lead`t'] in `i'
+            qui replace `lCI_g`g''  =_b[lead`t']+invttail(e(df_r),`critl')*_se[lead`t'] in `i'
+            qui replace `uCI_g`g''  =_b[lead`t']+invttail(e(df_r),`critu')*_se[lead`t'] in `i'
+            local ++i
+        }
+        if `baseline'==`max' {
+            foreach t of numlist 0(1)`t_3'{
+                qui replace `point_g`g''=_b[lag`t'] in `i'
+                qui replace `lCI_g`g''  =_b[lag`t']+invttail(e(df_r),`critl')*_se[lag`t'] in `i'
+                qui replace `uCI_g`g''  =_b[lag`t']+invttail(e(df_r),`critu')*_se[lag`t'] in `i'
+                local ++i
+            }
+        }
+        else if `baseline'==0 {
+            local ++i
+            foreach t of numlist 1(1)`max'{
+                qui replace `point_g`g''=_b[lag`t'] in `i'
+                qui replace `lCI_g`g''  =_b[lag`t']+invttail(e(df_r),`critl')*_se[lag`t'] in `i'
+                qui replace `uCI_g`g''  =_b[lag`t']+invttail(e(df_r),`critu')*_se[lag`t'] in `i'
+                local ++i
+            }
+        }
+        else {
+            foreach t of numlist 0(1)`_blpre' `_blpost'(1)`max'{
+                qui replace `point_g`g''=_b[lag`t'] in `i'
+                qui replace `lCI_g`g''  =_b[lag`t']+invttail(e(df_r),`critl')*_se[lag`t'] in `i'
+                qui replace `uCI_g`g''  =_b[lag`t']+invttail(e(df_r),`critu')*_se[lag`t'] in `i'
+                local ++i
+                if `t'== `_blpre'{
+                    local ++i
+                }
+            }
+        }
+    }
+}
+
+qui replace `point_g`g''=0 if `times'==`baseline'
+qui replace `uCI_g`g''  =0 if `times'==`baseline'
+qui replace `lCI_g`g''  =0 if `times'==`baseline'
+
+qui replace `uCI_g`g''  =0 if `times'!=. & `uCI_g`g''==.
+qui replace `lCI_g`g''  =0 if `times'!=. & `lCI_g`g''==.
+
+
+sort `times'
+
+tempvar lds
+qui gen `lds'= abs(`times')
+qui mkmat `lds' `lCI_g`g'' `point_g`g'' `uCI_g`g'' if `times'<0 & `times'!=., matrix(gleads_g`g')
+qui matrix colnames gleads_g`g' = Lead LB Est UB
+qui matsort gleads_g`g' 1 "up"
+
+tempvar lgs
+qui gen `lgs'=`times'
+qui mkmat `lgs' `lCI_g`g'' `point_g`g'' `uCI_g`g'' if `times'>=0 & `times'!=., matrix(glags_g`g')
+qui matrix colnames glags_g`g' = Lag LB Est UB
+qui matsort glags_g`g' 1 "up"
+
+
+if `baseline'==`min'{
+    qui sum `times'
+    local minlead  = (-r(min))-1
+    local maxlag   = r(max)
+    qui matrix gvll_g`g' = gv_g`g'["lead`minlead'".."lag`maxlag'", "lead`minlead'".."lag`maxlag'"]
+}
+
+else if `baseline'==`max'{
+    qui sum `times'
+    local minlead  = -r(min)
+    local maxlag   = r(max)-1
+    qui matrix gvll_g`g' = gv_g`g'["lead`minlead'".."lag`maxlag'", "lead`minlead'".."lag`maxlag'"]
+}
+else{
+    qui sum `times'
+    local minlead  = -r(min)
+    local maxlag   = r(max)
+    qui matrix gvll_g`g' = gv_g`g'["lead`minlead'".."lag`maxlag'", "lead`minlead'".."lag`maxlag'"]
+}
+*qui estimates drop est_g`g'
+
+ mat rename gleads_g`g' leads_g`j'
+ mat rename glags_g`g'  lags_g`j'
+ mat rename gvll_g`g'   vll_g`j'
+ mat rename gv_g`g'     v_g`j'
+ mat rename gb_g`g'     b_g`j'
+ local ++j
+}
+}
+
 *-------------------------------------------------------------------------------
 *--- (6) Graph
 *-------------------------------------------------------------------------------     
 sort `times'
+
+if ("`over'"=="") {
 
 foreach var in zero col {
     tempvar `var'
@@ -638,21 +1012,250 @@ else {
     || scatter `point' `times' if inrange(`times', `min', `max'),  `coef_op';
     #delimit cr
 }
+}
 
+else if ("`over'"!="") {
+
+if (`jitter'==0) {
+ foreach g of local groups {
+  tempvar times_g`g'
+  qui gen `times_g`g''=`times'
+ }
+}
+
+else {
+ local q=0
+ foreach g of local groups {
+  tempvar times_g`g'
+  qui gen `times_g`g''=`times'+(`q'*`jitter')
+  local ++q
+ }
+}
+
+foreach g of local groups {
+
+foreach var in zero_g`g' col_g`g' {
+    tempvar `var'
+    qui gen ``var''=.
+}
+
+if (`lCI_g`g''==`point_g`g''==`uCI_g`g''==0) & (_n==1) & (`baseline'!=`min'){
+    qui replace `zero_g`g''=1 if `lCI_g`g''==0 & `point_g`g''==0 & `uCI_g`g''==0  & `times'!=`baseline'
+    qui replace `col_g`g'' =1 if (`zero_g`g''[_n]==`zero_g`g''[_n+1]&`zero_g`g''!=.)|(`zero_g`g''[_n]==`zero_g`g''[_n-1]&`zero_g`g''!=.)
+    
+    qui replace `lCI_g`g''  =. if `col_g`g''==1 
+    qui replace `point_g`g''=. if `col_g`g''==1 
+    qui replace `uCI_g`g''  =. if `col_g`g''==1 
+    qui replace `times_g`g''=. if `col_g`g''==1 
+}
+
+if (`lCI_g`g''==`point_g`g''==`uCI_g`g''==0) & (_n==`tot') & (`baseline'!=`max'){
+    qui replace `zero_g`g''=1 if `lCI_g`g''==0 & `point_g`g''==0 & `uCI_g`g''==0 & `times'!=`baseline'
+    qui replace `col_g`g'' =1 if (`zero_g`g''[_n]==`zero_g`g''[_n-1]&`zero_g`g''!=.)|(`zero_g`g''[_n]==`zero_g`g''[_n+1]&`zero_g`g''!=.)
+    
+    qui replace `lCI_g`g''  =. if `col_g`g''==1 
+    qui replace `point_g`g''=. if `col_g`g''==1 
+    qui replace `uCI_g`g''  =. if `col_g`g''==1 
+    qui replace `times_g`g''=. if `col_g`g''==1 
+}
+}
+
+_Ci_Op_TS `ci'
+local ci_type `s(type)'
+local ci_op   `s(ci_op)'
+
+_LiSt_G, over(`over')
+_Op_TS_Ov, over(`over') `s(ci_op)'  
+local j=1
+foreach g of local groups {
+ local ci_g`g' `s(opt_g`j')'
+ local ++j
+}
+
+_LiSt_G, over(`over')
+_Op_TS_Ov, over(`over') `coef_op'  
+local j=1
+foreach g of local groups {
+ local coef_g`g' `s(opt_g`j')'
+ local ++j
+}
+
+local glab
+local m = 1
+local h = 2
+
+if ("`accum'"=="accum") == 1 {
+ foreach g of local str_groups {
+	local glab `glab' `h' "Point Estimate `over'=`g'" `m' "`lev'% CI `over'=`g'"
+	local m=`m'+3
+	local h=`h'+3
+ }
+}
+
+else {
+ foreach g of local str_groups {
+	local glab `glab' `h' "Point Estimate `over'=`g'" `m' "`lev'% CI `over'=`g'"
+	local m=`m'+2
+	local h=`h'+2
+ }
+}
+
+if ("`line'"=="noline")==0{
+    local graph_op `graph_op' xline(-1, lcolor(black) lpattern(solid))
+}
+
+if strmatch(`"`graph_op'"', "*leg*")==0 & strmatch(`"`graph_op'"', "*xti*")==1{
+    local graph_op `graph_op' legend(order(`"`glab'"'))
+}
+
+if strmatch(`"`graph_op'"', "*leg*")==1 & strmatch(`"`graph_op'"', "*xti*")==0{
+    local graph_op `graph_op' xtitle("Time")
+}
+
+if strmatch(`"`graph_op'"', "*leg*")==0 & strmatch(`"`graph_op'"', "*xti*")==0{
+    local graph_op `graph_op' legend(order(`"`glab'"')) xtitle("Time")
+}
+
+	local i = 1
+	local graph twoway
+  
+ if ("`balanced'"=="balanced") == 1{
+	tempvar obs
+    qui gen `obs'=.
+    
+    local k = 1
+    foreach t of numlist `min'(1)`max' {
+        qui sum `tvar' if `tvar'==`t'
+        qui replace `obs'=r(N)  in `k'
+        local ++k
+    }
+    qui tab `tvar', matcell(x)
+    foreach ado in matsort {
+        cap which `ado'
+        if _rc!=0 ssc install `ado'
+    }
+    matsort  x 1 "down"
+    local max2=el(x,2,1) 
+    qui tab `times' if `obs'>=`max2'
+    local bal=r(r)
+	
+    foreach g of local groups {
+	if (`i'<`G') {
+	 local graph `graph' `ci_type' `lCI_g`g'' `uCI_g`g'' `times_g`g'' if `obs'>=`max2', `ci_g`g'' `ci_op_old' || scatter `point_g`g'' `times_g`g'' if `obs'>=`max2', `coef_g`g'' || 
+    }
+	else if (`i'==`G') {
+	 local graph `graph' `ci_type' `lCI_g`g'' `uCI_g`g'' `times_g`g'' if `obs'>=`max2', `ci_g`g'' `ci_op_old' || scatter `point_g`g'' `times_g`g'' if `obs'>=`max2', `coef_g`g''
+	}
+	local ++i
+	}
+	local graph `graph' `graph_op' yline(0, lcolor(red))
+ }
+ 
+ else if ("`accum'"=="accum") == 1{
+    if ("`end'"=="noend") == 1{
+		local lpoint = `leads' -1 
+        local upoint = `lags'  -1 
+		
+        foreach g of local groups {
+		if (`i'<`G') {
+         local graph `graph' `ci_type' `lCI_g`g'' `uCI_g`g'' `times_g`g'' if inrange(`times', -`lpoint', `upoint'), `ci_g`g'' `ci_op_old' || scatter `point_g`g'' `times_g`g'' if inrange(`times', -`lpoint', `upoint'), `coef_g`g'' || 
+        }
+		else if (`i'==`G') {
+         local graph `graph' `ci_type' `lCI_g`g'' `uCI_g`g'' `times_g`g'' if inrange(`times', -`lpoint', `upoint'), `ci_g`g'' `ci_op_old' || scatter `point_g`g'' `times_g`g'' if inrange(`times', -`lpoint', `upoint'), `coef_g`g''
+		}
+		local ++i
+		}
+		local graph `graph' `graph_op' yline(0, lcolor(red))
+    }
+    else {
+		foreach g of local groups {
+        if (`i'<`G') {
+         local graph `graph' `ci_type' `lCI_g`g'' `uCI_g`g'' `times_g`g'', `ci_g`g'' `ci_op_old' || scatter `point_g`g'' `times_g`g'', `coef_g`g'' || scatter `point_g`g'' `times_g`g'' if `times'==-`leads' | `times'==`lags', `endpoints_op' || 
+		}
+		else if (`i'==`G') {
+		 local graph `graph' `ci_type' `lCI_g`g'' `uCI_g`g'' `times_g`g'', `ci_g`g'' `ci_op_old' || scatter `point_g`g'' `times_g`g'', `coef_g`g'' || scatter `point_g`g'' `times_g`g'' if `times'==-`leads' | `times'==`lags', `endpoints_op'
+		}
+		local ++i
+		}
+		local graph `graph' `graph_op' yline(0, lcolor(red))
+    }
+ }
+
+ else if ("`keepbal'"!="") == 1 {
+    foreach g of local groups {
+	if (`i'<`G') {
+     local graph `graph' `ci_type' `lCI_g`g'' `uCI_g`g'' `times_g`g'', `ci_g`g'' `ci_op_old' || scatter `point_g`g'' `times_g`g'', `coef_g`g'' || 
+	}
+	else if (`i'==`G') {
+     local graph `graph' `ci_type' `lCI_g`g'' `uCI_g`g'' `times_g`g'', `ci_g`g'' `ci_op_old' || scatter `point_g`g'' `times_g`g'', `coef_g`g''
+	}
+	local ++i
+	}
+	local graph `graph' `graph_op' yline(0, lcolor(red))
+ }
+
+ else if ("`inrange'"!="") == 1 {
+    foreach g of local groups {
+	if (`i'<`G') {
+     local graph `graph' `ci_type' `lCI_g`g'' `uCI_g`g'' `times_g`g'' if inrange(`times', -`leads', `lags'), `ci_g`g'' `ci_op_old' || scatter `point_g`g'' `times_g`g'' if inrange(`times', -`leads', `lags'), `coef_g`g'' || 
+    }
+	else if (`i'==`G') {
+     local graph `graph' `ci_type' `lCI_g`g'' `uCI_g`g'' `times_g`g'' if inrange(`times', -`leads', `lags'), `ci_g`g'' `ci_op_old' || scatter `point_g`g'' `times_g`g'' if inrange(`times', -`leads', `lags'), `coef_g`g''
+    }
+	local ++i
+	}
+	local graph `graph' `graph_op' yline(0, lcolor(red))
+ }
+
+ else {
+    foreach g of local groups {
+	if (`i'<`G') {
+    local graph `graph' `ci_type' `lCI_g`g'' `uCI_g`g'' `times_g`g'' if inrange(`times', `min', `max'), `ci_g`g'' `ci_op_old' || scatter `point_g`g'' `times_g`g'' if inrange(`times', `min', `max'), `coef_g`g'' || 
+	}
+	else if (`i'==`G') {
+    local graph `graph' `ci_type' `lCI_g`g'' `uCI_g`g'' `times_g`g'' if inrange(`times', `min', `max'), `ci_g`g'' `ci_op_old' || scatter `point_g`g'' `times_g`g'' if inrange(`times', `min', `max'), `coef_g`g'' 
+	}
+	local ++i
+	}
+	local graph `graph' `graph_op' yline(0, lcolor(red))
+ }
+
+    `graph'
+}
 
 *-------------------------------------------------------------------------------
 *--- (7) Return
 *-------------------------------------------------------------------------------     
 ereturn local cmdline `"`0'"'
-ereturn local cmd "eventdd"
-ereturn local estat_cmd "eventdd_estat"
-ereturn local estat_wboot "`estat_wboot'"
+ereturn local cmd "eventdd3"
+ereturn local estat_cmd "eventdd3_estat"
 ereturn local keepdummies "`keepdummies'"
 ereturn scalar level=`lev'
 ereturn scalar baseline=`baseline'
-ereturn matrix lags  lags
-ereturn matrix leads leads
-ereturn matrix V_leads_lags vll
+
+if ("`over'"=="") {
+ ereturn local estat_wboot "`estat_wboot'"
+ ereturn matrix lags  lags
+ ereturn matrix leads leads
+ ereturn matrix V_leads_lags vll
+}
+
+else if ("`over'"!="") {
+ereturn local over "`over_var'"
+ereturn matrix group_id group_id
+
+ foreach g of local groups {
+  ereturn local estat_wboot_g`g' "`estat_wboot_g`g''"
+ }
+ 
+ foreach n of numlist 1/`G' {
+  ereturn matrix b_g`n' 	b_g`n'
+  ereturn matrix lags_g`n'  lags_g`n'
+  ereturn matrix leads_g`n' leads_g`n'
+  ereturn matrix V_g`n'     v_g`n'
+  ereturn matrix V_leads_lags_g`n' vll_g`n'
+ }
+}
 
 restore
 
@@ -904,4 +1507,55 @@ program define _Ci_Op_TS, sclass
 
     sreturn local type  `anything'
     sreturn local ci_op `options'
+end
+
+
+cap program drop _LiSt_G
+program define _LiSt_G, sclass
+    vers 13.0
+  
+    syntax, over(varlist max=1)
+	  
+   	qui levelsof `over', local(groups)
+	local G = r(r)
+	
+	local _opt
+    foreach g of numlist 1/`G'{
+	local _opt `_opt' g`g'(string asis) 
+	}
+	
+	sreturn local list_g `_opt'
+end
+
+
+cap program drop _Op_TS_Ov
+program define _Op_TS_Ov, sclass
+    vers 13.0
+	local list_g `s(list_g)'
+  
+    syntax, over(varlist max=1) [`list_g']
+	  
+   	qui levelsof `over', local(groups)
+	local G = r(r)
+
+    foreach g of numlist 1/`G'{
+	sreturn local opt_g`g' `g`g'' 
+	}
+end
+
+
+cap program drop _Na_Me_Gr
+program define _Na_Me_Gr, sclass
+    vers 13.0
+	
+	syntax [anything], over(varlist max=1)
+	
+	qui levelsof `over', local(groups)
+	local G = r(r)
+    
+	tokenize `"`anything'"'
+	
+	foreach g of numlist 1/`G'{
+	sreturn local name_g`g' ``g'' 
+	} 
 end
