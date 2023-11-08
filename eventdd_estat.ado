@@ -3,12 +3,12 @@
 *! Author: Damian Clarke & Kathya Tapia-Schythe
 
 
-cap program drop eventdd3_estat
-program eventdd3_estat, eclass
+cap program drop eventdd_estat
+program eventdd_estat, eclass
 vers 13.0
 
 preserve
-if ("`e(cmd)'"=="eventdd3")+("`e(cmd)'"=="eventdd3_estat")==0{
+if ("`e(cmd)'"=="eventdd")+("`e(cmd)'"=="eventdd_estat")==0{
     error 321
 }
 
@@ -392,8 +392,8 @@ else if "`subcmd'"=="eventdd" {
 }
 }
 
-ereturn local  cmd         "eventdd3_estat"
-ereturn local  estat_cmd   "eventdd3_estat"
+ereturn local  cmd         "eventdd_estat"
+ereturn local  estat_cmd   "eventdd_estat"
 
 if strmatch(`"`rest'"', "*wboot*")==1 {
 ereturn local  keepdummies "keepdummies"

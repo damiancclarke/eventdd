@@ -2,8 +2,8 @@
 *! Version 4.0.0 October 08, 2023 @ 11:15:11 
 *! Author: Damian Clarke & Kathya Tapia-Schythe 
 
-cap program drop eventdd3
-program eventdd3, eclass
+cap program drop eventdd
+program eventdd, eclass
 vers 13.0
 
 *-------------------------------------------------------------------------------
@@ -1227,8 +1227,8 @@ if strmatch(`"`graph_op'"', "*leg*")==0 & strmatch(`"`graph_op'"', "*xti*")==0{
 *--- (7) Return
 *-------------------------------------------------------------------------------     
 ereturn local cmdline `"`0'"'
-ereturn local cmd "eventdd3"
-ereturn local estat_cmd "eventdd3_estat"
+ereturn local cmd "eventdd"
+ereturn local estat_cmd "eventdd_estat"
 ereturn local keepdummies "`keepdummies'"
 ereturn scalar level=`lev'
 ereturn scalar baseline=`baseline'
