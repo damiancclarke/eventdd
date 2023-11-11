@@ -46,8 +46,30 @@ net install sdid, from("https://raw.githubusercontent.com/damiancclarke/eventdd/
 ```
 
 ## Syntax
-
-
+```s
+eventdd depvar [indepvars] [if] [in] [weight], timevar(varname) [options]
+```
++ timevar(varname)
++ ci(type, ...) 
++ baseline(#)
++ level(#)
++ accum
++ leads(#)
++ lags(#)
++ over(varname)
++ jitter(#)
++ noend
++ keepbal(varname)
++ method(type, [absorb(absvars)] * ...)
++ wboot
++ wboot_op(string)
++ balanced
++ inrange
++ noline
++ graph_op(string)
++ coef_op(string)
++ endpoints_op(string)
++ keepdummies
 
 ## Examples
 
