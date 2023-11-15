@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.0 20 Jan 2020}{...}
+{* *! version 4.0 November 15, 2023}{...}
 {vieweralsosee "" "--"}{...}
 {viewerjumpto "Syntax" "eventdd##syntax"}{...}
 {viewerjumpto "Description" "eventdd##description"}{...}
@@ -20,14 +20,24 @@
 {it:timevar(varname)}
 [{it:options}]
 
-{synoptset 20 tabbed}{...}
+{synoptset 22 tabbed}{...}
 {synopthdr}
 {synoptline}
 {syntab:Main}
 {synopt:{opt timevar(varname)}}  Specifies the standardized time variable relative to the event of interest. This is required.
 {p_end}
-{synopt:{opt ci(type, ...)}}  Specifies the type of graph for confidence intervals: {cmd:rarea} (with area shading), {cmd:rcap} (with capped spikes) or {cmd:rline} (with lines), and also the graphing options: {help twoway_rarea:twoway rarea} for {cmd:rarea} (eg area), {help twoway_rcap:twoway rcap} 
-for {cmd:rcap} (eg line) or {help twoway_rline:twoway rline} for {cmd:rline} (eg connect) which should be passed to the resulting event study graph. {cmd:rcap} is the default type of graph.
+{synopt:{opt over(varname)}}  Indicates that multiple event studies should be estimated and plotted, where a separate event study is plotted over each level
+of the variable indicated.  The indicated variable must be discrete, but can take greater than two levels. Resulting graphs will be combined in a single plot.
+{p_end}
+{synopt:{opt ci(type, ...)}}  Specifies the type of graph for confidence intervals: {cmd:rarea} (with area shading),
+{cmd:rcap} (with capped spikes) or {cmd:rline} (with lines), and also the graphing options: {help twoway_rarea:twoway rarea} for {cmd:rarea} (eg area), {help twoway_rcap:twoway rcap} 
+for {cmd:rcap} (eg line) or {help twoway_rline:twoway rline} for {cmd:rline} (eg connect) which should be passed to the resulting event study graph. {cmd:rcap} is the default graph type.
+If multiple event studies are produced using the {cmd:over()} option, and separate options are desired
+for each set of confidence intervals on each event study
+this can be requested using g1(), g2(), and so forth to pass options, with values corresponding to orderd levels of the variable indicated in the {cmd:over()} option.  
+{p_end}
+{synopt:{opt jitter(#)}}  Only for use if {cmd:over()} is specified.  Allows for each event study to be slightly shifted on
+graphical output to avoid super-imposition.  Scalar value indicated in jitter indicates the distance on the horizontal axis to shift each event study.
 {p_end}
 {synopt:{opt baseline(#)}}  Specifies the baseline period relative to the moment of the event of interest; the default is -1.
 {p_end}
@@ -59,10 +69,14 @@ and also any additional {help estimation options} and {help vce_option:vce optio
 {synopt:{opt graph_op(string)}}  Specifies any general options in {help twoway_options:twoway options} which should be passed to the resulting event study graph, (eg title, axis, labels, legends).
 {p_end}
 {synopt:{opt coef_op(string)}}  Specifies any options for coefficients in {help scatter} which should be passed to the resulting event study graph, (eg marker).
+If multiple event studies are produced using the {cmd:over()} option, and separate options are desired
+for each set of coefficients on each event study
+this can be requested using g1(), g2(), and so forth to pass options, with values corresponding to orderd levels of the variable indicated in the {cmd:over()} option.  
 {p_end}
 {synopt:{opt endpoints_op(string)}}  Specifies any options for end points coefficients in {help scatter} which should be passed to the resulting event study graph, (eg marker). This is only available if specifying the {cmd:accum} option.
 {p_end}
-{synopt:{opt keepdummies}}  Generate dummies of leads and lags. Required save the data before using or data in memory would be lost. This option is necessary to perform joint significance tests using wild or score bootstrap with the postestimation commands.
+{synopt:{opt keepdummies}}  Generate dummies of leads and lags. Required save the data before using or data in memory would be lost. This option is necessary to perform joint significance tests using wild or score bootstrap
+with the postestimation commands.
 {p_end}
 {synoptline}
 {p2colreset}{...}
@@ -106,9 +120,9 @@ the event, with missing values for units in which the event never occurs (pure c
  {cmd:eventdd} provides a useful check of parallel {it: pre}-trends in the context of a
  difference-in-differences (DD) estimator.  Broader discussion of these models are provided in
  Angrist and Pischke (2009, section 5.2), Freyaldenhoven et al,. (2019), and Goodman-Bacon
- (2018) (among many other references).  The paper by Clarke and Tapia (2020) accompanies this
+ (2018) (among many other references).  The paper by Clarke and Tapia (2021) accompanies this
  command.  Examples of use are given in the "Examples" section below, as well as in Clarke
- and Tapia (2020).
+ and Tapia (2021).
 
 {pstd}
 
@@ -129,13 +143,32 @@ the event, with missing values for units in which the event never occurs (pure c
 {pstd}
 {p_end}
 {phang}
+{opt over(varname)}  Allows for the estimation and plotting of multiple event studies on a
+single plot. Event studies are estimated separately and plotted for each level of the variable
+indicated in {cmd:over()}.  This variable must be categorical, but can take more than two levels,
+and event studies will be plotted for each level.  Output for each model will be provided, and
+graphical results are combined on a single plot.
+
+{pstd}
+{p_end}
+{phang}
 {opt ci(type, ...)}  Specifies the type of graph for the confidence intervals. The types available are {cmd:rarea} for an interval with area shading (see {help twoway_rarea:twoway rarea}), 
 {cmd:rcap} for an interval with capped spikes (see {help twoway_rcap:twoway rcap}) and {cmd:rline} for an interval with lines (see {help twoway_rline:twoway rline}). Only one type can be specified and all intervals will be the same type. 
 The appearance can be modified with the inclusion of any graphing option for the confidence intervals permitted in {help twoway_rarea:rarea}, 
 {help twoway_rcap:rcap} or {help twoway_rline:rline} depending on the type of CI indicated; including {help area_options:area options}, 
 {help line_options:line options} and {help connect_options:connect options}, respectively.  This does not allow the use of the general options such as titles and legends, which should be specified in the {cmd:graph_op()} option. If not specified, 
 a standard {cmd:rcap} graphical output will be provided. 
- 
+If {cmd:over()} has been specified, options for separate confidence intervals for each graph can be
+passed using {cmd:g1()}, {cmd:g2()} and so forth.  For example, if separate colours are desired for
+two event studies over a variable specified in {cmd:over()} this can be achieve with: ci(rarea, g1(color(gs12%30)) g2(color(gs12%50)))
+
+{pstd}
+{p_end}
+{phang}
+{opt jitter(#)}  Allows for event studies to be slightly shifted on the horizontal axis when multiple
+models are presented in a single plot.  All coefficients and confidence intervals will be shifted by
+the units indicated.  This option should only be used in combination with {cmd:over()}.
+
 {pstd}
 {p_end}
 {phang}
@@ -183,7 +216,8 @@ discussed below, allows for only balanced leads and lags {it:relative} to treatm
 {opt fe} requests that the model should be estimated by fixed-effects (within) estimation, using Stata's {help xtreg}, fe command, and {opt hdfe} requests that the model should be estimated using the user-written {help reghdfe} command (if installed). 
 {opt *} represents any other {help estimation options} included and permitted by {cmd:regress}, {cmd:xtreg}, or {cmd:reghdfe} that will be passed to the specified estimation command. This allows for the inclusion of clustered standard errors or other variance estimators (see {help vce_option:vce options}).
 For {opt ols}, unit-specific fixed effects and time-specific fixed effects must be included in the {indepvars} indicated in the command syntax.  For {opt fe} unit-specific fixed effects {it: should not} be included in the {indepvars} indicated but time-specific fixed effects still need to be.  
-Finally, for {opt hdfe} the {opt absorb(absvars)} option should also be specified to indicate which fixed effects should be controlled in the regression (refer to {help reghdfe} (if installed) for additional details) and any fixed effects indicated in {opt absorb(absvars)} should not be included in 
+Finally, for {opt hdfe} the {opt absorb(absvars)} option should also be specified to indicate which fixed effects should be controlled in the regression (refer to {help reghdfe} (if installed) for additional details) and any fixed effects
+indicated in {opt absorb(absvars)} should not be included in 
 the {indepvars} indicated. {opt hdfe} cannot be used in combination with the {opt wboot} option. {opt ols} is the default estimation method.
 
 {pstd}
@@ -234,6 +268,9 @@ for the use of alternative labels for graph axes. If not specified, a standard g
 {opt coef_op(string)}  Allows for the inclusion of any graphing option for the coefficients permitted in {help scatter} including 
 {help marker_options}, {help marker_label_options}, among others. This does not allow the use of the general options of {cmd:graph_op()}. 
 If not specified, a standard graphical output will be provided.
+If {cmd:over()} has been specified, options for separate coefficients for each graph can be
+passed using {cmd:g1()}, {cmd:g2()} and so forth.  For example, if separate symbols are desired for
+two event studies over a variable specified in {cmd:over()} this can be achieve with: coef_op(g1(ms(Sh)) g2(ms(Oh)))
 
 {pstd}
 {p_end}
@@ -253,7 +290,7 @@ Required save the data before using or data in memory would be lost. This option
 {p_end}
 
 {marker examples}{...}
-{title:Examples}
+{title:Examples: single-event study}
 {pstd}
 
 {pstd}
@@ -295,7 +332,38 @@ Generate the event study plot associated to DD model of female suicide on no-fau
 {pstd}
  . {stata eventdd asmrs pcinc asmrh cases i.year, timevar(timeToTreat) method(fe, cluster(stfips)) keepbal(stfips) leads(6) lags(14) graph_op(ytitle("Suicides per 1m Women"))}
 
+{title:Examples: multiple event-studies}
 {pstd}
+
+{pstd}
+Load data that replicates Bhalotra et al.'s (2023) analysis of the passage of parliamentary gender quotas on rates of maternal mortality.
+
+{pstd}
+ . {stata webuse set www.damianclarke.net/stata/}
+
+{pstd}
+ . {stata webuse quota_example.dta, clear}
+
+{pstd}
+Generate variables indicating GDP in bottom quartile, and year of quotar adoption.
+
+{pstd}
+ . {stata sum lngdp, d}
+
+{pstd}
+ . {stata gen GDPp25 = lngdp<r(p25)}
+
+{pstd}
+ . {stata gen timeToTreat = year-quotaYear}
+
+{pstd}
+Estimate event study stratifying by whether or not countries are in bottom quartile of GDP per capita.
+
+{pstd}
+ . {stata eventdd lnmmrt i.year, timevar(timeToTreat) method(hdfe, absorb(country) cluster(country)) lags(10) leads(10) accum over(GDPp25) jitter(0.2) graph_op(legend(pos(6) order(2 "GDP {&ge} 25p" 5 "GDP < 25p" 1 "95% CI") rows(1)))}
+ 
+
+
 
 {title:Stored results}
 
@@ -325,6 +393,17 @@ Generate the event study plot associated to DD model of female suicide on no-fau
 {synopt:{cmd:e(leads)}}all event leads, their lower bound, the point estimate, and their upper bound{p_end}
 {synopt:{cmd:e(lags)}}all event lags, their lower bound, the point estimate, and their upper bound{p_end}
 {synopt:{cmd:e(V_leads_lags)}}variance-covariance matrix of leads and lags estimators{p_end}
+
+In the case that {cmd:over()} is specified and multiple event-studies are produced, instead of the matrices indicated above, a set of matrices named as below are returned, for each level # of the variable indicated on {cmd:over}:
+
+{synoptset 20 tabbed}{...}
+{p2col 5 20 24 2: Matrices}{p_end}
+{synopt:{cmd:e(b_g#)}}coefficient vector{p_end}
+{synopt:{cmd:e(V_g#)}}variance-covariance matrix of the estimators{p_end}
+{synopt:{cmd:e(leads_g#)}}all event leads, their lower bound, the point estimate, and their upper bound{p_end}
+{synopt:{cmd:e(lags_g#)}}all event lags, their lower bound, the point estimate, and their upper bound{p_end}
+{synopt:{cmd:e(V_leads_lags_g#)}}variance-covariance matrix of leads and lags estimators{p_end}
+
 
 {pstd}
 {p_end}
@@ -360,7 +439,7 @@ The following postestimation commands are of special interest after {cmd:eventdd
 {pstd}
 {p_end}
 
-Examples: 
+{title:Examples: post-estimation commands}
 
 {pstd}
 Load data and generate standarized event-time variable.
@@ -411,8 +490,12 @@ Angrist, Joshua and Jörn-Steffen Pischke. 2009. "Mostly Harmless Econometrics: 
 Princeton University Press.
 
 {pstd}
-Clarke, Damian and Kathya Tapia. 2020. "Implementing the Panel Event Study".
-IZA Discussion Paper 13524.
+Bhalotra, Sonia, Damian Clarke, Joseph Gomes and Atheendar Venkataramani. 2023. "Maternal Mortality and Women's Political Power".
+Journal of the European Economic Association 21(5):2172–2208.
+
+{pstd}
+Clarke, Damian and Kathya Tapia. 2021. "Implementing the Panel Event Study".
+Stata Journal 21(4):853–884.
 
 {pstd}
 Freyaldenhoven, Simon, Christian Hansen, and Jesse M. Shapiro. 2019. "Pre-event Trends in 
