@@ -49,27 +49,29 @@ net install sdid, from("https://raw.githubusercontent.com/damiancclarke/eventdd/
 ```s
 eventdd depvar [indepvars] [if] [in] [weight], timevar(varname) [options]
 ```
-+ timevar(varname)
-+ ci(type, ...) 
-+ baseline(#)
-+ level(#)
-+ accum
-+ leads(#)
-+ lags(#)
-+ over(varname)
-+ jitter(#)
-+ noend
-+ keepbal(varname)
-+ method(type, [absorb(absvars)] * ...)
-+ wboot
-+ wboot_op(string)
-+ balanced
-+ inrange
-+ noline
-+ graph_op(string)
-+ coef_op(string)
-+ endpoints_op(string)
-+ keepdummies
+where options are:
+
++ timevar(varname): Specifies the standardized time variable relative to the event of interest. This is required.
++ over(varname):  Indicates that multiple event studies should be estimated and plotted, where a separate event study is plotted over each level of the variable indicated.  The indicated variable must be discrete, but can  take greater than two levels. Resulting graphs will be combined in a single plot.
++ ci(type, ...):  Specifies the type of graph for confidence intervals: rarea (with area shading), rcap (with capped spikes) or rline (with lines), and also the graphing options: twoway rarea for rarea (eg area), twoway rcap for rcap (eg line) or twoway rline for rline (eg connect) which should be passed to the resulting event study graph. rcap is the default graph type.  If multiple event studies are produced using the over() option, and separate options are desired for each set of confidence intervals on each event study this can be requested using g1(), g2(), and so forth to pass options, with values corresponding to orderd levels of the variable indicated in the over() option.
++ jitter(#):  Only for use if over() is specified.  Allows for each event study to be slightly shifted on graphical output to avoid super-imposition.  Scalar value indicated in jitter indicates the distance on the horizontal axis to shift each event study.
++ baseline(#): Specifies the baseline period relative to the moment of the event of interest; the default is -1.
++ level(#): Set confidence level; default is level(95).
++ accum: Accumulates periods beyond indicated leads and lags into a final coefficient/confidence interval.
++ leads(#): Specifies the number of leads which should be included. This is required when specifying the accum, keepbal or inrange options, otherwise all possible lags will be plotted.
++ lags(#): Specifies the number of lags which should be included. This is required when specifying the accum, keepbal or inrange options, otherwise all possible lags will be plotted.
++ noend: Requests that end points are suppressed from graphs. This is only available if specifying the accum option.
++ keepbal(varname): Indicates that only units which are balanced in the panel should be kept, where varname indicates the panel variable (eg state).
++ method(type, [absorb(absvars)] * ...): Specifies the estimation method: ols (with Stata's regress command), fe (with Stata's xtreg, fe command) or hdfe (with the user-written reghdfe command), and also any additional estimation options and vce options which should be passed to the event study model, (eg robust or clustered sandwich estimator of variance). The absorb(absvars) sub-option is only required wh fying the hdfe option. ols is the default estimation method.
++ wboot: Requests that confidence intervals be estimated by wild bootstrap. This requires the user-written boottest command.  This may not be combined with the hdfe option.
++ wboot_op(string): Specifies any options for wild bootstrap estimation, (eg seed(), bootcluster()).  These will be passed to the boottest command. In the case of using the level option, this should only be specified in command syntax. nograph option is already specified.
++ balanced: Requests that only balanced periods in which all units have data be shown in the plot.
++ inrange: Requests that only specified periods in leads and lags be shown in the plot.
++ noline: Requests that line at -1 on the x-axis is suppressed from graphs.
++ graph_op(string):  Specifies any general options in twoway options which should be passed to the resulting event study graph, (eg title, axis, labels, legends).
++ coef_op(string): Specifies any options for coefficients in scatter which should be passed to the resulting event study graph, (eg marker).  If multiple event studies are produced using the over() option, and separate options are desired for each set of coefficients on each event study this can be requested using g1(), g2(), and so forth to pass options, with values corresponding to orderd levels of the variable indicated in the over() option.
++ endpoints_op(string): Specifies any options for end points coefficients in scatter which should be passed to the resulting event study graph, (eg marker). This is only available if specifying the accum option. 
++ keepdummies: Generate dummies of leads and lags. Required save the data before using or data in memory would be lost. This option is necessary to perform joint significance tests using wild or score bootstrap with the postestimation commands.
 
 ## Examples
 
@@ -190,10 +192,8 @@ webuse quota_example.dta, clear
 sum lngdp, d
 gen GDPp25 = lngdp<r(p25)
 
-// Generate country-level register of year of quota adoption and time to adoption
-bys country: egen minQ  = min(year) if quota==1
-bys country: egen qyear = mean(minQ)
-gen timeToTreat = year-qyear
+// Generate time to adoption
+gen timeToTreat = year-quotaYear
 
 // Event study examining impact of reserved seats on maternal mortality
 eventdd lnmmrt i.year, timevar(timeToTreat) method(hdfe, absorb(country) cluster(country)) lags(10) leads(10) accum graph
