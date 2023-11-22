@@ -207,7 +207,8 @@ eventdd lnmmrt i.year, timevar(timeToTreat) method(hdfe, absorb(country) cluster
 
 <img src="https://github.com/damiancclarke/eventdd/blob/main/quotasByGDP.png" width="600" height="400"> 
 
-## Citation
+## Authors 
+**eventdd** is written by Kathya Tapia Schythe (UC Davis) and Damian Clarke (University of Chile & University of Exeter).  
 
 If you use **eventdd** and would like to cite it, please cite either the paper and/or the command's [RePEc citation](https://ideas.repec.org/c/boc/bocode/s458737.html).  BiBTeX citations for the paper are 
 
