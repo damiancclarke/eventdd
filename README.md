@@ -52,9 +52,9 @@ eventdd depvar [indepvars] [if] [in] [weight], timevar(varname) [options]
 where options are:
 
 + timevar(varname): Specifies the standardized time variable relative to the event of interest. This is required.
-+ over(varname):  Indicates that multiple event studies should be estimated and plotted, where a separate event study is plotted over each level of the variable indicated.  The indicated variable must be discrete, but can  take greater than two levels. Resulting graphs will be combined in a single plot.
++ over(varname):  Indicates that multiple event studies should be estimated and plotted, where a separate event study is plotted over each level of the variable indicated.  The indicated variable must be discrete, but can take greater than two levels, and can be either string or numerical format. Resulting graphs will be combined in a single plot.
 + ci(type, ...):  Specifies the type of graph for confidence intervals: rarea (with area shading), rcap (with capped spikes) or rline (with lines), and also the graphing options: twoway rarea for rarea (eg area), twoway rcap for rcap (eg line) or twoway rline for rline (eg connect) which should be passed to the resulting event study graph. rcap is the default graph type.  If multiple event studies are produced using the over() option, and separate options are desired for each set of confidence intervals on each event study this can be requested using g1(), g2(), and so forth to pass options, with values corresponding to orderd levels of the variable indicated in the over() option.
-+ jitter(#):  Only for use if over() is specified.  Allows for each event study to be slightly shifted on graphical output to avoid super-imposition.  Scalar value indicated in jitter indicates the distance on the horizontal axis to shift each event study.
++ jitter(#):  Only for use if over() is specified.  Allows for each event study to be slightly shifted on graphical output to avoid super-imposition.  Scalar value between 0 and 1 indicated in jitter indicates the distance on the horizontal axis to shift each event study.
 + baseline(#): Specifies the baseline period relative to the moment of the event of interest; the default is -1.
 + level(#): Set confidence level; default is level(95).
 + accum: Accumulates periods beyond indicated leads and lags into a final coefficient/confidence interval.
@@ -208,7 +208,7 @@ eventdd lnmmrt i.year, timevar(timeToTreat) method(hdfe, absorb(country) cluster
 <img src="https://github.com/damiancclarke/eventdd/blob/main/quotasByGDP.png" width="600" height="400"> 
 
 ## Authors 
-**eventdd** is written by Kathya Tapia Schythe (UC Davis) and Damian Clarke (University of Chile & University of Exeter).  
+**eventdd** is written by Kathya Tapia Schythe (University of California, Davis) and Damian Clarke (University of Chile & University of Exeter).  
 
 If you use **eventdd** and would like to cite it, please cite either the paper and/or the command's [RePEc citation](https://ideas.repec.org/c/boc/bocode/s458737.html).  BiBTeX citations for the paper are 
 
