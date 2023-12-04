@@ -27,7 +27,7 @@
 {synopt:{opt timevar(varname)}}  Specifies the standardized time variable relative to the event of interest. This is required.
 {p_end}
 {synopt:{opt over(varname)}}  Indicates that multiple event studies should be estimated and plotted, where a separate event study is plotted over each level
-of the variable indicated.  The indicated variable must be discrete, but can take greater than two levels. Resulting graphs will be combined in a single plot.
+of the variable indicated.  The indicated variable must be discrete (either string or numeric), and can take greater than two levels. Resulting graphs will be combined in a single plot.
 {p_end}
 {synopt:{opt ci(type, ...)}}  Specifies the type of graph for confidence intervals: {cmd:rarea} (with area shading),
 {cmd:rcap} (with capped spikes) or {cmd:rline} (with lines), and also the graphing options: {help twoway_rarea:twoway rarea} for {cmd:rarea} (eg area), {help twoway_rcap:twoway rcap} 
@@ -37,7 +37,7 @@ for each set of confidence intervals on each event study
 this can be requested using g1(), g2(), and so forth to pass options, with values corresponding to orderd levels of the variable indicated in the {cmd:over()} option.  
 {p_end}
 {synopt:{opt jitter(#)}}  Only for use if {cmd:over()} is specified.  Allows for each event study to be slightly shifted on
-graphical output to avoid super-imposition.  Scalar value indicated in jitter indicates the distance on the horizontal axis to shift each event study.
+graphical output to avoid super-imposition.  Scalar value between 0 and 1 provided in jitter indicates the distance on the horizontal axis to shift each event study.
 {p_end}
 {synopt:{opt baseline(#)}}  Specifies the baseline period relative to the moment of the event of interest; the default is -1.
 {p_end}
@@ -145,7 +145,8 @@ the event, with missing values for units in which the event never occurs (pure c
 {phang}
 {opt over(varname)}  Allows for the estimation and plotting of multiple event studies on a
 single plot. Event studies are estimated separately and plotted for each level of the variable
-indicated in {cmd:over()}.  This variable must be categorical, but can take more than two levels,
+indicated in {cmd:over()}.  This variable must be categorical (in either string or numeric
+formats), but can take more than two levels,
 and event studies will be plotted for each level.  Output for each model will be provided, and
 graphical results are combined on a single plot.
 
@@ -166,8 +167,9 @@ two event studies over a variable specified in {cmd:over()} this can be achieve 
 {p_end}
 {phang}
 {opt jitter(#)}  Allows for event studies to be slightly shifted on the horizontal axis when multiple
-models are presented in a single plot.  All coefficients and confidence intervals will be shifted by
-the units indicated.  This option should only be used in combination with {cmd:over()}.
+models are presented in a single plot. Jitter can take values between 0 and 1, and all coefficients and
+confidence intervals will be shifted by the units indicated.  This option should only be used in
+combination with {cmd:over()}.
 
 {pstd}
 {p_end}
@@ -394,7 +396,8 @@ Estimate event study stratifying by whether or not countries are in bottom quart
 {synopt:{cmd:e(lags)}}all event lags, their lower bound, the point estimate, and their upper bound{p_end}
 {synopt:{cmd:e(V_leads_lags)}}variance-covariance matrix of leads and lags estimators{p_end}
 
-In the case that {cmd:over()} is specified and multiple event-studies are produced, instead of the matrices indicated above, a set of matrices named as below are returned, for each level # of the variable indicated on {cmd:over}:
+{pstd}
+In the case that {cmd:over()} is specified and multiple event-studies are produced, instead of the matrices indicated above, a set of matrices named as below are returned for each level # of the variable indicated in {cmd:over}:
 
 {synoptset 20 tabbed}{...}
 {p2col 5 20 24 2: Matrices}{p_end}
@@ -403,6 +406,7 @@ In the case that {cmd:over()} is specified and multiple event-studies are produc
 {synopt:{cmd:e(leads_g#)}}all event leads, their lower bound, the point estimate, and their upper bound{p_end}
 {synopt:{cmd:e(lags_g#)}}all event lags, their lower bound, the point estimate, and their upper bound{p_end}
 {synopt:{cmd:e(V_leads_lags_g#)}}variance-covariance matrix of leads and lags estimators{p_end}
+{synopt:{cmd:e(group_id)}}Table providing correspondence between the levels of the variable indicated in {cmd:over()} to group numbers indicated as # in matrices above.{p_end}
 
 
 {pstd}
@@ -518,8 +522,8 @@ Economics 121(1):267-288.
 Damian Clarke, Universidad de Chile.
 Email {browse "mailto:dclarke@fen.uchile.cl":dclarke@fen.uchile.cl}
 
-Kathya Tapia, Universidad de Santiago de Chile.
-Email {browse "mailto:kathya.tapia@usach.cl":kathya.tapia@usach.cl}
+Kathya Tapia, University of California, Davis.
+Email {browse "mailto:kattapia@ucdavis.edu":kattapia@ucdavis.edu}
 
 
 
