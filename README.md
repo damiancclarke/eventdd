@@ -196,13 +196,13 @@ gen GDPp25 = lngdp<r(p25)
 gen timeToTreat = year-quotaYear
 
 // Event study examining impact of reserved seats on maternal mortality
-eventdd lnmmrt i.year, timevar(timeToTreat) method(hdfe, absorb(country) cluster(country)) lags(10) leads(10) accum graph
+eventdd lnmmrt i.year, timevar(timeToTreat) method(hdfe, absorb(country) cluster(country)) lags(10) leads(10) accum graph_op(ytitle("ln(Maternal Mortality)") legend(order(2 "Point Estimate" 1 "95% CI") pos(6) rows(1)) ylabel(, format("%04.2f")))
 ```
 
 <img src="https://github.com/damiancclarke/eventdd/blob/main/quotas.png" width="600" height="400"> 
 
 ```s
-eventdd lnmmrt i.year, timevar(timeToTreat) method(hdfe, absorb(country) cluster(country)) lags(10) leads(10) accum over(GDPp25) jitter(0.2)  graph_op(legend(pos(6) order(2 "Point Estimate (GDP {&ge} 25 p)" 5 "Point Estimate (GDP < 25 p)" 1 "95% CI") rows(1))) coef_op(g1(ms(Sh)) g2(ms(Oh))) ci(rarea, g1(color(gs12%30)) g2(color(gs12%50))) 
+eventdd lnmmrt i.year, timevar(timeToTreat) method(hdfe, absorb(country) cluster(country)) lags(10) leads(10) accum over(GDPp25) jitter(0.2) graph_op(ytitle("ln(Maternal Mortality)") legend(pos(6) order(2 "Point Estimate (GDP {&ge} 25 p)" 5 "Point Estimate (GDP < 25 p)" 1 "95% CI") rows(1)) ylabel(, format("%04.2f"))) coef_op(g1(ms(Sh)) g2(ms(Oh))) ci(rarea, g1(color(gs12%30)) g2(color(gs12%50))) 
 ```
 
 <img src="https://github.com/damiancclarke/eventdd/blob/main/quotasByGDP.png" width="600" height="400"> 
