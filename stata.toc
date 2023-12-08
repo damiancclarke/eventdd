@@ -1,0 +1,8 @@
+v 4.0.0
+d Damian Clarke and Kathya Tapia Schythe
+d dclarke@fen.uchile.cl - kattapia@ucdavis.edu
+d https://github.com/damiancclarke/eventdd
+
+d 'eventdd': Estimate panel event study models and generate event study plots
+
+p eventdd
