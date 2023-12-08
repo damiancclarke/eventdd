@@ -1,0 +1,9 @@
+v 4.0.0
+d 'EVENTDD': Estimate panel event study models and generate event study plots
+d
+d Distribution-Date:   2023-12-08
+d License: GNU v3.0
+d
+F eventdd.ado
+F eventdd_estat.ado
+F eventdd.sthlp
