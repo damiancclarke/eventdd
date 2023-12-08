@@ -42,7 +42,7 @@ ssc install eventdd, replace
 ```
 or using ```net install``` command:
 ```s
-net install sdid, from("https://raw.githubusercontent.com/damiancclarke/eventdd/master") replace
+net install eventdd, from("https://raw.githubusercontent.com/damiancclarke/eventdd/master") replace
 ```
 
 ## Syntax
